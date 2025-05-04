@@ -4,7 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FIRE + STP + SIP Gap Calculator</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js">function updateSIPSuggestion() {
+  const gap = parseFloat(document.getElementById('gap').value);
+  const years = parseInt(document.getElementById('tenure').value);
+  const annualRate = parseFloat(document.getElementById('rate').value) / 100;
+  const monthlyRate = annualRate / 12;
+  const months = years * 12;
+
+  if (gap > 0 && months > 0 && monthlyRate > 0) {
+    const sip = (gap * monthlyRate) / ((Math.pow(1 + monthlyRate, months) - 1) * (1 + monthlyRate));
+    document.getElementById('sip').value = sip.toFixed(0);
+    document.getElementById('summary').innerHTML = `
+      <p><strong>Suggested SIP to fill ₹${gap.toFixed(0)} gap in ${years} years:</strong> ₹${sip.toFixed(0)}/month</p>
+    `;
+  }
+}
+
+
+
+document.getElementById('rate').addEventListener('input', updateSIPSuggestion);
+document.getElementById('rate').addEventListener('change', updateSIPSuggestion);
+</script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -119,6 +139,19 @@
   </div>
 
   <script>
+document.getElementById('years').addEventListener('input', function () {
+  const gap = parseFloat(document.getElementById('gap').value);
+  const years = parseInt(document.getElementById('years').value);
+  const annualRate = parseFloat(document.getElementById('rate').value) / 100;
+  const monthlyRate = annualRate / 12;
+  const months = years * 12;
+
+  if (gap > 0 && months > 0 && monthlyRate > 0) {
+    const sip = (gap * monthlyRate) / ((Math.pow(1 + monthlyRate, months) - 1) * (1 + monthlyRate));
+    document.getElementById('sip').value = sip.toFixed(0);
+    document.getElementById('summary').innerHTML = `<p><strong>Suggested SIP to fill ₹${gap.toFixed(0)} gap in ${years} years:</strong> ₹${sip.toFixed(0)}/month</p>`;
+  }
+});
     function calculateFIRE() {
       const age = parseInt(document.getElementById('currentAge').value);
       const retireAge = parseInt(document.getElementById('retireAge').value);
@@ -155,6 +188,22 @@
       const targetCorpus = selectedMethod === 'fireCorpus4' ? fireCorpus4 : fireCorpusInflated;
       const gap = selectedMethod === 'fireCorpus4' ? fireCorpus4 - liquid : targetCorpus - portfolio;
       document.getElementById('gap').value = gap.toFixed(0);
+
+      // Auto-update SIP on tenure change
+      const tenureInput = document.getElementById('tenure');
+      if (tenureInput) {
+        tenureInput.addEventListener('input', () => {
+        const updatedYears = parseInt(tenureInput.value);
+        if (!isNaN(updatedYears) && updatedYears > 0) {
+          const updatedMonths = updatedYears * 12;
+          const annualRate = parseFloat(document.getElementById('rate').value) / 100;
+          const monthlyRate = annualRate / 12;
+          const updatedSIP = (gap * monthlyRate) / ((Math.pow(1 + monthlyRate, updatedMonths) - 1) * (1 + monthlyRate));
+          document.getElementById('sip').value = updatedSIP.toFixed(0);
+          document.getElementById('summary').innerHTML = `<p><strong>Suggested SIP to fill ₹${gap.toFixed(0)} gap in ${updatedYears} years:</strong> ₹${updatedSIP.toFixed(0)}/month</p>`;
+        }
+      });
+      }
 
       // Handle SIP suggestion only if gap is positive
       if (gap > 0) {
