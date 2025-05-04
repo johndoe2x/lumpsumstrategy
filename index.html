@@ -1,0 +1,210 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIRE + STP + SIP Gap Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f9fbfd;
+      padding: 20px;
+    }
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      max-width: 1000px;
+      margin: auto;
+    }
+    h2, h3 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: #007bff;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .results, .sip-results {
+      margin-top: 20px;
+      background: #eef4ff;
+      padding: 16px;
+      border-left: 4px solid #007bff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: right;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    canvas {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>FIRE Gap Calculator + STP Strategy</h2>
+    <label>Current Age</label><input id="currentAge" value="35" type="number">
+    <label>Retirement Age</label><input id="retireAge" value="40" type="number">
+    <label>Monthly Expenses (₹)</label><input id="monthlyExpense" value="50000" type="number">
+    <label>Inflation Rate (%)</label><input id="inflation" value="6" type="number">
+    <label>Post-Retirement Return (%)</label><input id="postReturn" value="6.25" type="number">
+    <label>Initial Liquid Fund (₹)</label><input id="liquidFund" value="9350000" type="number">
+    <label>Liquid Fund Return (% annual)</label><input id="liquidRate" value="6.24" type="number">
+    <label>Monthly STP to Equity (₹)</label><input id="monthlySTP" value="48688" type="number">
+    <label>Equity Annual Return (%)</label><input id="equityRate" value="12" type="number">
+    <button onclick="calculateFIRE()">Calculate FIRE Gap</button><div id="output" class="results"></div>
+
+<h3>STP Monthly Table</h3>
+<table>
+  <thead>
+    <tr><th>Month</th><th>Opening Liquid</th><th>Interest</th><th>Transferred</th><th>Closing Liquid</th><th>Equity</th><th>Total</th></tr>
+  </thead>
+  <tbody id="monthlyTableBody"></tbody>
+</table>
+
+  </div>  <div class="container">
+    <h2>SIP Strategy to Fill FIRE Gap</h2>
+    <label for="gap">Gap to Cover (₹)</label>
+    <input type="number" id="gap" value="1678441">
+    <label>Monthly SIP (₹)</label>
+    <input type="number" id="sip" value="21000">
+    <label>Annual Return (%)</label>
+    <input type="number" id="rate" value="12">
+    <label>Tenure (Years)</label>
+    <input type="number" id="years" value="5">
+    <button onclick="calculateGrowth()">Calculate SIP Growth</button>
+    <div class="sip-results" id="summary"></div>
+    <canvas id="barChart"></canvas>
+  </div>  <script>
+    function calculateFIRE() {
+      const age = parseInt(document.getElementById('currentAge').value);
+      const retireAge = parseInt(document.getElementById('retireAge').value);
+      const years = retireAge - age;
+      const months = years * 12;
+
+      const expense = parseFloat(document.getElementById('monthlyExpense').value);
+      const inf = parseFloat(document.getElementById('inflation').value) / 100;
+      const postReturn = parseFloat(document.getElementById('postReturn').value) / 100;
+
+      const liquidRate = parseFloat(document.getElementById('liquidRate').value) / 12 / 100;
+      const equityRate = parseFloat(document.getElementById('equityRate').value) / 12 / 100;
+      const stp = parseFloat(document.getElementById('monthlySTP').value);
+      let liquid = parseFloat(document.getElementById('liquidFund').value);
+
+      const futureExpense = expense * Math.pow(1 + inf, years);
+      const fireCorpus = (futureExpense * 12) / postReturn;
+      const fireCorpus4 = (expense * 12) / 0.04;
+
+      let equity = 0;
+      let table = "";
+      for (let i = 1; i <= months; i++) {
+        const open = liquid;
+        const interest = open * liquidRate;
+        liquid += interest - stp;
+        equity = equity * (1 + equityRate) + stp;
+        const total = liquid + equity;
+        table += `<tr><td>${i}</td><td>₹${open.toFixed(0)}</td><td>₹${interest.toFixed(0)}</td><td>₹${stp}</td><td>₹${liquid.toFixed(0)}</td><td>₹${equity.toFixed(0)}</td><td>₹${total.toFixed(0)}</td></tr>`;
+      }
+      const portfolio = liquid + equity;
+      const gap = fireCorpus4 - portfolio;
+      document.getElementById('gap').value = gap.toFixed(0);
+
+      // Auto-suggest exact SIP
+      const r = equityRate;
+      const exactSIP = (gap * r) / ((Math.pow(1 + r, months) - 1) * (1 + r));
+      document.getElementById('sip').value = exactSIP.toFixed(0);
+      document.getElementById('summary').innerHTML = `<p><strong>Suggested SIP to fill ₹${gap.toFixed(0)} gap in 5 years:</strong> ₹${exactSIP.toFixed(0)}/month</p>`;
+
+      let html = `<p>Required Corpus (Inflation Adjusted): ₹${fireCorpus.toFixed(0)}</p>
+                  <p>Required Corpus (4% Rule): ₹${fireCorpus4.toFixed(0)}</p>
+                  <p>Projected Total from STP: ₹${portfolio.toFixed(0)}</p>`;
+      if (gap <= 0) html += `<p style='color:green'><strong>You are FIRE Ready!</strong></p>`;
+      else html += `<p style='color:red'><strong>Gap to FIRE: ₹${gap.toFixed(0)}</strong></p>`;
+
+      document.getElementById('output').innerHTML = html;
+      document.getElementById('monthlyTableBody').innerHTML = table;
+    }
+
+    function calculateGrowth() {
+      const sip = parseFloat(document.getElementById('sip').value);
+      const rate = parseFloat(document.getElementById('rate').value) / 100 / 12;
+      const years = parseInt(document.getElementById('years').value);
+      const months = years * 12;
+
+      let invested = sip * months;
+      let fv = 0;
+      for (let i = 0; i < months; i++) {
+        fv = (fv + sip) * (1 + rate);
+      }
+      const profit = fv - invested;
+      const summary = document.getElementById('summary');
+      summary.innerHTML = `<p>Estimated Growth: ₹${fv.toFixed(0)}</p>
+                           <p>Total Invested: ₹${invested.toFixed(0)}</p>
+                           <p>Profit: ₹${profit.toFixed(0)}</p>`;
+
+      const ctx = document.getElementById('barChart').getContext('2d');
+      if (window.bar) window.bar.destroy();
+      window.bar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Invested', 'Profit', 'Total'],
+          datasets: [{
+            data: [invested, profit, fv],
+            backgroundColor: ['#2196f3', '#4caf50', '#9c27b0']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `₹${ctx.raw.toLocaleString()}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: value => `₹${value.toLocaleString()}`
+              }
+            }
+          }
+        }
+      });
+    }
+  </script></body>
+</html>
