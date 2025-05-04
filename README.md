@@ -1,0 +1,2 @@
+# lumpsumstrategy
+lumpsum, stp, sip
