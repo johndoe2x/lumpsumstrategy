@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -84,17 +85,25 @@
     <label>Liquid Fund Return (% annual)</label><input id="liquidRate" value="6.24" type="number">
     <label>Monthly STP to Equity (₹)</label><input id="monthlySTP" value="48688" type="number">
     <label>Equity Annual Return (%)</label><input id="equityRate" value="12" type="number">
-    <button onclick="calculateFIRE()">Calculate FIRE Gap</button><div id="output" class="results"></div>
+    <label>Choose Corpus Method</label>
+    <select id="corpusMethod" onchange="calculateFIRE()">
+            <option value="fireCorpus4">4% Rule (Today)</option>
+      <option value="fireCorpusInflated">4% Rule (Inflation Adjusted)</option>
+    </select>
+    <button onclick="calculateFIRE()">Calculate FIRE Gap</button>
 
-<h3>STP Monthly Table</h3>
-<table>
-  <thead>
-    <tr><th>Month</th><th>Opening Liquid</th><th>Interest</th><th>Transferred</th><th>Closing Liquid</th><th>Equity</th><th>Total</th></tr>
-  </thead>
-  <tbody id="monthlyTableBody"></tbody>
-</table>
+    <div id="output" class="results"></div>
 
-  </div>  <div class="container">
+    <h3>STP Monthly Table</h3>
+    <table>
+      <thead>
+        <tr><th>Month</th><th>Opening Liquid</th><th>Interest</th><th>Transferred</th><th>Closing Liquid</th><th>Equity</th><th>Total</th></tr>
+      </thead>
+      <tbody id="monthlyTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="container">
     <h2>SIP Strategy to Fill FIRE Gap</h2>
     <label for="gap">Gap to Cover (₹)</label>
     <input type="number" id="gap" value="1678441">
@@ -107,7 +116,9 @@
     <button onclick="calculateGrowth()">Calculate SIP Growth</button>
     <div class="sip-results" id="summary"></div>
     <canvas id="barChart"></canvas>
-  </div>  <script>
+  </div>
+
+  <script>
     function calculateFIRE() {
       const age = parseInt(document.getElementById('currentAge').value);
       const retireAge = parseInt(document.getElementById('retireAge').value);
@@ -125,6 +136,8 @@
 
       const futureExpense = expense * Math.pow(1 + inf, years);
       const fireCorpus = (futureExpense * 12) / postReturn;
+      const inflatedMonthly = expense * Math.pow(1 + inf, years);
+      const fireCorpusInflated = (inflatedMonthly * 12) / 0.04;
       const fireCorpus4 = (expense * 12) / 0.04;
 
       let equity = 0;
@@ -138,18 +151,23 @@
         table += `<tr><td>${i}</td><td>₹${open.toFixed(0)}</td><td>₹${interest.toFixed(0)}</td><td>₹${stp}</td><td>₹${liquid.toFixed(0)}</td><td>₹${equity.toFixed(0)}</td><td>₹${total.toFixed(0)}</td></tr>`;
       }
       const portfolio = liquid + equity;
-      const gap = fireCorpus4 - portfolio;
+      const selectedMethod = document.getElementById('corpusMethod').value;
+      const targetCorpus = selectedMethod === 'fireCorpus4' ? fireCorpus4 : fireCorpusInflated;
+      const gap = selectedMethod === 'fireCorpus4' ? fireCorpus4 - liquid : targetCorpus - portfolio;
       document.getElementById('gap').value = gap.toFixed(0);
 
-      // Auto-suggest exact SIP
-      const r = equityRate;
-      const exactSIP = (gap * r) / ((Math.pow(1 + r, months) - 1) * (1 + r));
-      document.getElementById('sip').value = exactSIP.toFixed(0);
-      document.getElementById('summary').innerHTML = `<p><strong>Suggested SIP to fill ₹${gap.toFixed(0)} gap in 5 years:</strong> ₹${exactSIP.toFixed(0)}/month</p>`;
+      // Handle SIP suggestion only if gap is positive
+      if (gap > 0) {
+        const r = equityRate;
+        const exactSIP = (gap * r) / ((Math.pow(1 + r, months) - 1) * (1 + r));
+        document.getElementById('sip').value = exactSIP.toFixed(0);
+        document.getElementById('summary').innerHTML = `<p><strong>Suggested SIP to fill ₹${gap.toFixed(0)} gap in 5 years:</strong> ₹${exactSIP.toFixed(0)}/month</p>`;
+      } else {
+        document.getElementById('summary').innerHTML = `<p style='color:green'><strong>You are FIRE-ready! No SIP required.</strong></p>`;
+      }
 
-      let html = `<p>Required Corpus (Inflation Adjusted): ₹${fireCorpus.toFixed(0)}</p>
-                  <p>Required Corpus (4% Rule): ₹${fireCorpus4.toFixed(0)}</p>
-                  <p>Projected Total from STP: ₹${portfolio.toFixed(0)}</p>`;
+      let html = `<p><strong>Required Corpus (4% Rule - Today):</strong> ₹${fireCorpus4.toFixed(0)}${selectedMethod === 'fireCorpus4' ? ' ✅' : ''}</p>
+                  <p><strong>Required Corpus (4% Rule - Adjusted @ 6% Inflation):</strong> ₹${fireCorpusInflated.toFixed(0)}${selectedMethod === 'fireCorpusInflated' ? ' ✅' : ''}</p>`;
       if (gap <= 0) html += `<p style='color:green'><strong>You are FIRE Ready!</strong></p>`;
       else html += `<p style='color:red'><strong>Gap to FIRE: ₹${gap.toFixed(0)}</strong></p>`;
 
@@ -206,5 +224,6 @@
         }
       });
     }
-  </script></body>
+  </script>
+</body>
 </html>
